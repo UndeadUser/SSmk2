@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">ToriiApp</string>
+    <string name="app_icon">App Icon</string>
+    <string name="toriiapp">ToriiApp</string>
+    <string name="manage_inventory">Manage Your Inventory</string>
+    <string name="app_logo">App Logo</string>
+    <string name="login">Login</string>
+</resources>

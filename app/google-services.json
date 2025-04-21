@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "905611323794",
+    "project_id": "sipsync-17541",
+    "storage_bucket": "sipsync-17541.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:905611323794:android:c415bf86ce96f60509f94b",
+        "android_client_info": {
+          "package_name": "com.example.inventoryapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5P9ibf7K1enB_37NZNwrJQDv6SR5jckc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
