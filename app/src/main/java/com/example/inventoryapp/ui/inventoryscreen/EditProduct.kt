@@ -18,25 +18,24 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.example.inventoryapp.crud.Product
-import com.example.inventoryapp.crud.ProductRepository
-import com.example.inventoryapp.crud.ProductViewModel
-import kotlinx.coroutines.launch
+import com.example.inventoryapp.clouddata.FirestoreProductRepository
+import com.example.inventoryapp.clouddata.Product
+import com.example.inventoryapp.clouddata.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditProduct(navController: NavHostController, productId: Int, productRepository: ProductRepository) {
+fun EditProduct(navController: NavHostController, productId: String, firestoreProductRepository: FirestoreProductRepository) {
     var product by remember { mutableStateOf<Product?>(null) }
     var productName by rememberSaveable { mutableStateOf("") }
     var productPrice by rememberSaveable { mutableStateOf("") }
     var productQuantity by rememberSaveable { mutableStateOf("") }
     var selectedCategory by rememberSaveable { mutableStateOf("Carbonated") }
 
-    val productViewModel = remember { ProductViewModel(productRepository) }
+    val productViewModel = remember { ProductViewModel(firestoreProductRepository) }
     val categories = listOf("Carbonated", "Juice", "Alcohol")
 
     LaunchedEffect(productId) {
-        product = productRepository.getProductByID(productId)
+        product = firestoreProductRepository.getProductById(productId)
         product?.let {
             productName = it.name
             productPrice = it.price.toString()

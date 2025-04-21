@@ -43,21 +43,23 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.example.inventoryapp.crud.Product
-import com.example.inventoryapp.crud.ProductRepository
-import com.example.inventoryapp.crud.ProductViewModel
+import com.example.inventoryapp.clouddata.FirestoreProductRepository
+import com.example.inventoryapp.clouddata.Product
+import com.example.inventoryapp.clouddata.ProductViewModel
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddProducts(navController: NavHostController, productRepository: ProductRepository) {
+fun AddProducts(navController: NavHostController, productRepository: FirestoreProductRepository) {
     var productName by rememberSaveable { mutableStateOf("") }
     var productPrice by rememberSaveable { mutableStateOf("") }
     var productQuantity by rememberSaveable { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Carbonated") }
 
     val coroutineScope = rememberCoroutineScope()
-    val productViewModel = remember { ProductViewModel(productRepository) }
+    val firestoreProductRepository = remember { ProductViewModel(FirestoreProductRepository()) }
     val categories = listOf("Carbonated", "Juice", "Alcohol")
 
     Scaffold(
@@ -193,13 +195,19 @@ fun AddProducts(navController: NavHostController, productRepository: ProductRepo
                         coroutineScope.launch {
                             val price = productPrice.toDoubleOrNull() ?: 0.0
                             val quantity = productQuantity.toIntOrNull() ?: 0
+
+                            val currentUser = Firebase.auth.currentUser
+                            val userId = currentUser?.uid ?: return@launch
+
                             val newProduct = Product(
                                 name = productName,
                                 price = price,
                                 quantity = quantity,
-                                category = selectedCategory
+                                category = selectedCategory,
+                                userId = userId
                             )
-                            productViewModel.insertProduct(newProduct)
+
+                            firestoreProductRepository.insertProduct(newProduct)
                             navController.popBackStack()
                         }
                     },

@@ -22,23 +22,22 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.example.inventoryapp.crud.Product
-import com.example.inventoryapp.crud.ProductRepository
-import com.example.inventoryapp.crud.ProductViewModel
+import com.example.inventoryapp.clouddata.Product
+import com.example.inventoryapp.clouddata.ProductViewModel
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import com.example.inventoryapp.R
 import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.compose.rememberNavController
-import com.example.inventoryapp.crud.AppDatabase
+import com.example.inventoryapp.clouddata.FirestoreProductRepository
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Products(navController: NavHostController, productRepository: ProductRepository) {
+fun Products(navController: NavHostController, firestoreProductRepository: FirestoreProductRepository) {
 
-    val productViewModel = remember { ProductViewModel(productRepository) }
+    val productViewModel = remember { ProductViewModel(firestoreProductRepository) }
     val products by productViewModel.products.collectAsState()
     val categories = listOf("All", "Carbonated", "Juice", "Alcohol")
     var selectedCategory by remember { mutableStateOf("All") }
@@ -222,7 +221,6 @@ fun ProductCard(
 fun ProductsScreenPreview() {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val database = remember { AppDatabase.getDatabase(context) }
-    val productRepository = remember { ProductRepository(database.productDao()) }
-    Products(navController, productRepository)
+    val firestoreProductRepository = remember { FirestoreProductRepository() }
+    Products(navController, firestoreProductRepository)
 }

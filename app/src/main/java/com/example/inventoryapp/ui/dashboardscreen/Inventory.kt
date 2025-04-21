@@ -16,8 +16,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
-import com.example.inventoryapp.crud.AppDatabase
-import com.example.inventoryapp.crud.ProductRepository
+import com.example.inventoryapp.clouddata.FirestoreProductRepository
 import com.example.inventoryapp.ui.inventoryscreen.AddProducts
 import com.example.inventoryapp.ui.inventoryscreen.EditProduct
 import com.example.inventoryapp.ui.inventoryscreen.Products
@@ -25,16 +24,15 @@ import com.example.inventoryapp.ui.inventoryscreen.Products
 @Composable
 fun Inventory(navController: NavHostController) {
     val context = LocalContext.current
-    val database = remember { AppDatabase.getDatabase(context) }
-    val productRepository = remember { ProductRepository(database.productDao()) }
+    val firestoreProductRepository = remember { FirestoreProductRepository() }
 
     NavHost(navController, startDestination = "home") {
         composable("home") { InventoryScreen(navController) }
-        composable("products") { Products(navController, productRepository) }
-        composable("add_products") { AddProducts(navController, productRepository) }
+        composable("products") { Products(navController, firestoreProductRepository) }
+        composable("add_products") { AddProducts(navController, firestoreProductRepository) }
         composable("edit_product/{productId}") { backStackEntry ->
-            val productId = backStackEntry.arguments?.getString("productId")?.toInt() ?: 0
-            EditProduct(navController, productId, productRepository)
+            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+            EditProduct(navController, productId, firestoreProductRepository)
         }
     }
 }
