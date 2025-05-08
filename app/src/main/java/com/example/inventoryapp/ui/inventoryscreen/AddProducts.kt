@@ -52,15 +52,23 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddProducts(navController: NavHostController, productRepository: FirestoreProductRepository) {
+fun AddProducts(
+    navController: NavHostController,
+    productRepository: FirestoreProductRepository
+) {
+    // State for form fields
     var productName by rememberSaveable { mutableStateOf("") }
     var productPrice by rememberSaveable { mutableStateOf("") }
     var productQuantity by rememberSaveable { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("Carbonated") }
+    var selectedCategory by rememberSaveable { mutableStateOf("Carbonated") }
 
     val coroutineScope = rememberCoroutineScope()
-    val firestoreProductRepository = remember { ProductViewModel(FirestoreProductRepository()) }
-    val categories = listOf("Carbonated", "Juice", "Alcohol")
+    // Use the passed-in repository for ViewModel, not a new instance!
+    val productViewModel = remember { ProductViewModel(productRepository) }
+    val categories = remember { listOf("Carbonated", "Juice", "Alcohol") }
+
+    // Validation for enabling the button
+    val isFormValid = productName.isNotBlank() && productPrice.isNotBlank() && productQuantity.isNotBlank()
 
     Scaffold(
         topBar = {
@@ -76,9 +84,7 @@ fun AddProducts(navController: NavHostController, productRepository: FirestorePr
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(
-                        0xFFF0EAD6
-                    )
+                    containerColor = Color(0xFFF0EAD6)
                 )
             )
         }
@@ -94,7 +100,7 @@ fun AddProducts(navController: NavHostController, productRepository: FirestorePr
         ) {
             OutlinedTextField(
                 value = productName,
-                onValueChange = { productName = it.replaceFirstChar { char -> char.uppercaseChar() } },
+                onValueChange = { productName = it },
                 label = { Text("Product Name", color = Color.Black) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -144,7 +150,7 @@ fun AddProducts(navController: NavHostController, productRepository: FirestorePr
 
             OutlinedTextField(
                 value = productPrice,
-                onValueChange = { productPrice = it.replaceFirstChar { char -> char.uppercaseChar() } },
+                onValueChange = { productPrice = it.filter { char -> char.isDigit() || char == '.' } },
                 label = { Text("Product Price", color = Color.Black) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -166,7 +172,7 @@ fun AddProducts(navController: NavHostController, productRepository: FirestorePr
 
             OutlinedTextField(
                 value = productQuantity,
-                onValueChange = { productQuantity = it.replaceFirstChar { char -> char.uppercaseChar() } },
+                onValueChange = { productQuantity = it.filter { char -> char.isDigit() } },
                 label = { Text("Product Quantity", color = Color.Black) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -200,14 +206,14 @@ fun AddProducts(navController: NavHostController, productRepository: FirestorePr
                             val userId = currentUser?.uid ?: return@launch
 
                             val newProduct = Product(
-                                name = productName,
+                                name = productName.trim(),
                                 price = price,
                                 quantity = quantity,
                                 category = selectedCategory,
                                 userId = userId
                             )
 
-                            firestoreProductRepository.insertProduct(newProduct)
+                            productViewModel.insertProduct(newProduct)
                             navController.popBackStack()
                         }
                     },
@@ -215,13 +221,13 @@ fun AddProducts(navController: NavHostController, productRepository: FirestorePr
                         .width(150.dp)
                         .height(50.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (productName.isNotBlank() && productPrice.isNotBlank() && productQuantity.isNotBlank())
+                        containerColor = if (isFormValid)
                             Color(0xFFE97451) else Color(0xFFF4C6B2),
                         disabledContainerColor = Color(0xFFF4C6B2),
                         contentColor = Color(0xFFF0EAD6),
                         disabledContentColor = Color(0xFFF0EAD6)
                     ),
-                    enabled = productName.isNotBlank() && productPrice.isNotBlank() && productQuantity.isNotBlank(),
+                    enabled = isFormValid
                 ) {
                     Text("Add Product")
                 }
@@ -229,3 +235,4 @@ fun AddProducts(navController: NavHostController, productRepository: FirestorePr
         }
     }
 }
+

@@ -24,7 +24,11 @@ import com.example.inventoryapp.clouddata.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditProduct(navController: NavHostController, productId: String, firestoreProductRepository: FirestoreProductRepository) {
+fun EditProduct(
+    navController: NavHostController,
+    productId: String,
+    firestoreProductRepository: FirestoreProductRepository
+) {
     var product by remember { mutableStateOf<Product?>(null) }
     var productName by rememberSaveable { mutableStateOf("") }
     var productPrice by rememberSaveable { mutableStateOf("") }
@@ -32,7 +36,7 @@ fun EditProduct(navController: NavHostController, productId: String, firestorePr
     var selectedCategory by rememberSaveable { mutableStateOf("Carbonated") }
 
     val productViewModel = remember { ProductViewModel(firestoreProductRepository) }
-    val categories = listOf("Carbonated", "Juice", "Alcohol")
+    val categories = remember { listOf("Carbonated", "Juice", "Alcohol") }
 
     LaunchedEffect(productId) {
         product = firestoreProductRepository.getProductById(productId)
@@ -58,9 +62,7 @@ fun EditProduct(navController: NavHostController, productId: String, firestorePr
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(
-                        0xFFF0EAD6
-                    )
+                    containerColor = Color(0xFFF0EAD6)
                 )
             )
         }
@@ -74,7 +76,6 @@ fun EditProduct(navController: NavHostController, productId: String, firestorePr
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start
         ) {
-
             Text(
                 text = "Product Name",
                 fontSize = 16.sp,
@@ -84,9 +85,7 @@ fun EditProduct(navController: NavHostController, productId: String, firestorePr
             )
             OutlinedTextField(
                 value = productName,
-                onValueChange = {
-                    productName = it.replaceFirstChar { char -> char.uppercaseChar() }
-                },
+                onValueChange = { productName = it },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color(0xFFF0EAD6),
@@ -142,7 +141,7 @@ fun EditProduct(navController: NavHostController, productId: String, firestorePr
             )
             OutlinedTextField(
                 value = productPrice,
-                onValueChange = { productPrice = it },
+                onValueChange = { productPrice = it.filter { char -> char.isDigit() || char == '.' } },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color(0xFFF0EAD6),
@@ -170,7 +169,7 @@ fun EditProduct(navController: NavHostController, productId: String, firestorePr
             )
             OutlinedTextField(
                 value = productQuantity,
-                onValueChange = { productQuantity = it },
+                onValueChange = { productQuantity = it.filter { char -> char.isDigit() } },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color(0xFFF0EAD6),
@@ -197,11 +196,10 @@ fun EditProduct(navController: NavHostController, productId: String, firestorePr
                     onClick = {
                         val price = productPrice.toDoubleOrNull()
                         val quantity = productQuantity.toIntOrNull()
-
                         if (productName.isNotBlank() && price != null && quantity != null) {
                             product?.let {
                                 val updatedProduct = it.copy(
-                                    name = productName,
+                                    name = productName.trim(),
                                     price = price,
                                     quantity = quantity,
                                     category = selectedCategory
@@ -212,24 +210,14 @@ fun EditProduct(navController: NavHostController, productId: String, firestorePr
                         }
                     },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .width(50.dp)
-                        .height(50.dp)
-                        .padding(horizontal = 50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (productName.isNotBlank() && productPrice.isNotBlank() && productQuantity.isNotBlank())
-                            Color(0xFFE97451)
-                        else
-                            Color(0xFFF4C6B2),
-                        disabledContainerColor = Color(0xFFF4C6B2),
-                        contentColor = Color(0xFFF0EAD6),
-                        disabledContentColor = Color(0xFFF0EAD6)
-                    ),
+                        .width(150.dp)
+                        .height(50.dp),
                     enabled = productName.isNotBlank() && productPrice.isNotBlank() && productQuantity.isNotBlank()
                 ) {
-                    Text("Save Changes")
+                    Text("Update Product")
                 }
             }
         }
     }
 }
+

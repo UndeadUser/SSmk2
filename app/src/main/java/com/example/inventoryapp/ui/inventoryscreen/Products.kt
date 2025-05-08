@@ -26,26 +26,42 @@ import com.example.inventoryapp.clouddata.Product
 import com.example.inventoryapp.clouddata.ProductViewModel
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import com.example.inventoryapp.R
 import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.inventoryapp.clouddata.FirestoreProductRepository
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Products(navController: NavHostController, firestoreProductRepository: FirestoreProductRepository) {
-
-    val productViewModel = remember { ProductViewModel(firestoreProductRepository) }
+fun Products(
+    navController: NavHostController,
+    firestoreProductRepository: FirestoreProductRepository
+) {
+    // ViewModel should be provided by a ViewModelProvider or Hilt in a real app
+    val productViewModel: ProductViewModel = remember { ProductViewModel(firestoreProductRepository) }
     val products by productViewModel.products.collectAsState()
-    val categories = listOf("All", "Carbonated", "Juice", "Alcohol")
+    val categories = remember { listOf("All", "Carbonated", "Juice", "Alcohol") }
     var selectedCategory by remember { mutableStateOf("All") }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showFilterPanel by remember { mutableStateOf(false) }
 
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val panelOffset by animateDpAsState(targetValue = if (showFilterPanel) 0.dp else screenWidth, label = "")
+    val panelOffset by animateDpAsState(
+        targetValue = if (showFilterPanel) 0.dp else screenWidth,
+        label = ""
+    )
+
+    // Memoize filtering for performance
+    val filteredProducts = remember(products, selectedCategory, searchQuery) {
+        products.filter {
+            (selectedCategory == "All" || it.category == selectedCategory) &&
+                    (searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true))
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -62,7 +78,9 @@ fun Products(navController: NavHostController, firestoreProductRepository: Fires
                             )
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFFF0EAD6))
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color(0xFFF0EAD6)
+                    )
                 )
             },
         ) { innerPadding ->
@@ -71,7 +89,7 @@ fun Products(navController: NavHostController, firestoreProductRepository: Fires
                     .fillMaxSize()
                     .padding(innerPadding)
                     .background(Color(0xFFF0EAD6))
-                    .padding(16.dp),
+                    .padding(16.dp)
             ) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -98,83 +116,29 @@ fun Products(navController: NavHostController, firestoreProductRepository: Fires
                 )
 
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    val filteredProducts = products.filter {
-                        (selectedCategory == "All" || it.category == selectedCategory) &&
-                                (searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true))
-                    }
-                    items(filteredProducts) { product ->
-                        ProductCard(product, navController, productViewModel)
+                    items(filteredProducts, key = { it.id }) { product ->
+                        ProductCard(
+                            product = product,
+                            navController = navController,
+                            onDelete = { productViewModel.deleteProduct(product) }
+                        )
                     }
                 }
             }
         }
 
+        // Filter Panel Overlay
         if (showFilterPanel) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f))
-                    .clickable { showFilterPanel = false }
-                    .windowInsetsPadding(WindowInsets.systemBars)
+            FilterPanelOverlay(
+                categories = categories,
+                selectedCategory = selectedCategory,
+                onCategorySelected = {
+                    selectedCategory = it
+                    showFilterPanel = false
+                },
+                panelOffset = panelOffset,
+                onDismiss = { showFilterPanel = false }
             )
-
-            val density = LocalDensity.current
-
-            Box(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(250.dp)
-                        .offset {
-                            with(density) {
-                                IntOffset(panelOffset.toPx().roundToInt(), 0)
-                            }
-                        }
-                        .background(Color(0xFFF0EAD6))
-                        .padding(
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
-                            start = 16.dp,
-                            end = 16.dp,
-                            bottom = 16.dp
-                        )
-                        .align(Alignment.CenterEnd)
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp)
-                    ) {
-                        Text(
-                            "Filter by Category",
-                            color = Color.Black,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        categories.forEach { category ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedCategory = category
-                                        showFilterPanel = false
-                                    },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = selectedCategory == category,
-                                    colors = RadioButtonDefaults.colors(selectedColor = Color.Black),
-                                    onClick = {
-                                        selectedCategory = category
-                                        showFilterPanel = false
-                                    }
-                                )
-                                Text(category, modifier = Modifier.padding(start = 8.dp), color = Color.Black)
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -183,10 +147,12 @@ fun Products(navController: NavHostController, firestoreProductRepository: Fires
 fun ProductCard(
     product: Product,
     navController: NavHostController,
-    productViewModel: ProductViewModel
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val productTextColor = Color(0xFFE97451)
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(8.dp)
             .clickable { navController.navigate("edit_product/${product.id}") },
@@ -201,16 +167,109 @@ fun ProductCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = product.name, style = MaterialTheme.typography.titleMedium, color = Color(0xFFE97451))
-                Text(text = "Price: ₱${product.price}", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFE97451))
-                Text(text = "Quantity: x${product.quantity}", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFE97451))
-                Text(text = "Category: ${product.category}", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFE97451))
+                Text(
+                    text = product.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = productTextColor
+                )
+                Text(
+                    text = "Price: ₱${product.price}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = productTextColor
+                )
+                Text(
+                    text = "Quantity: x${product.quantity}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = productTextColor
+                )
+                Text(
+                    text = "Category: ${product.category}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = productTextColor
+                )
             }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete Product",
+                    tint = productTextColor
+                )
+            }
+        }
+    }
+}
 
-            IconButton(onClick = {
-                productViewModel.deleteProduct(product)
-            }) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete Product", tint = Color(0xFFE97451))
+@Composable
+fun FilterPanelOverlay(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit,
+    panelOffset: Dp,
+    onDismiss: () -> Unit
+) {
+    val density = LocalDensity.current
+
+    // Semi-transparent background to dismiss the panel
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.3f))
+            .clickable { onDismiss() }
+            .windowInsetsPadding(WindowInsets.systemBars)
+    )
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(250.dp)
+                .offset {
+                    with(density) {
+                        IntOffset(panelOffset.toPx().roundToInt(), 0)
+                    }
+                }
+                .background(Color(0xFFF0EAD6))
+                .padding(
+                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp
+                )
+                .align(Alignment.CenterEnd)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    "Filter by Category",
+                    color = Color.Black,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                categories.forEach { category ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onCategorySelected(category) },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedCategory == category,
+                            colors = RadioButtonDefaults.colors(selectedColor = Color.Black),
+                            onClick = { onCategorySelected(category) }
+                        )
+                        Text(
+                            category,
+                            modifier = Modifier.padding(start = 8.dp),
+                            color = Color.Black
+                        )
+                    }
+                }
             }
         }
     }
@@ -224,3 +283,4 @@ fun ProductsScreenPreview() {
     val firestoreProductRepository = remember { FirestoreProductRepository() }
     Products(navController, firestoreProductRepository)
 }
+

@@ -21,11 +21,9 @@ class AuthViewModel : ViewModel() {
     }
 
     fun checkAuthState() {
-        _authState.value = if (auth.currentUser != null) {
-            AuthState.Authenticated
-        } else {
-            AuthState.Idle
-        }
+        _authState.value = AuthState.Loading
+        val user = auth.currentUser
+        _authState.value = if (user != null) AuthState.Authenticated else AuthState.Idle
     }
 
     fun login(email: String, password: String) {
@@ -71,8 +69,8 @@ class AuthViewModel : ViewModel() {
 
 
 sealed class AuthState {
-    object Idle : AuthState()
     object Loading : AuthState()
     object Authenticated : AuthState()
+    object Idle : AuthState()
     data class Error(val message: String) : AuthState()
 }

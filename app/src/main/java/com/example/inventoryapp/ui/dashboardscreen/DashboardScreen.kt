@@ -11,10 +11,15 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -36,67 +41,45 @@ fun DashboardScreen(
     authViewModel: AuthViewModel
 ) {
     val systemUiController = rememberSystemUiController()
+    val statusBarColor = Color(0xFFE97451)
 
-    SideEffect {
-        systemUiController.setStatusBarColor(Color(0xFFE97451))
-        systemUiController.setNavigationBarColor(Color(0xFFE97451))
+    // Set system UI colors once on composition
+    LaunchedEffect(statusBarColor) {
+        systemUiController.setStatusBarColor(statusBarColor)
+        systemUiController.setNavigationBarColor(statusBarColor)
     }
 
-    val navController = rememberNavController()
-    val navItemList = listOf(
-        NavItem("Sales", R.drawable.sales),
-        NavItem("Inventory", R.drawable.inventory),
-        NavItem("Purchasing", R.drawable.purchase),
-        NavItem("Account", R.drawable.account),
-    )
+    // Memoize nav items list
+    val navItemList = remember {
+        listOf(
+            NavItem("Sales", R.drawable.sales),
+            NavItem("Inventory", R.drawable.inventory),
+            NavItem("Purchasing", R.drawable.purchase),
+            NavItem("Account", R.drawable.account),
+        )
+    }
 
-    var selectedIndex by remember { mutableIntStateOf(0) }
+    // Preserve selected index across config changes
+    var selectedIndex by rememberSaveable { mutableStateOf(0) }
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-    val hideBottomBar = currentRoute in listOf("products", "add_products") || currentRoute?.startsWith("edit_product") == true
+
+    // Efficiently compute whether to hide bottom bar
+    val hideBottomBar by remember(currentRoute) {
+        derivedStateOf {
+            currentRoute in listOf("products", "add_products") || currentRoute?.startsWith("edit_product") == true
+        }
+    }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         bottomBar = {
             if (!hideBottomBar) {
-                NavigationBar(
-                    containerColor = Color(0xFFE97451),
-                    tonalElevation = 8.dp,
-                    modifier = Modifier.shadow(8.dp, spotColor = Color.Gray)
-                ) {
-                    navItemList.forEachIndexed { index, navItem ->
-                        val isSelected = selectedIndex == index
-                        val textColor = if (isSelected) Color(0xFFD6CDBA) else Color(0xFFF0EAD6)
-                        val iconSize = if (isSelected) 28.dp else 24.dp
-
-                        NavigationBarItem(
-                            selected = isSelected,
-                            onClick = { selectedIndex = index },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(id = navItem.icon),
-                                    contentDescription = null,
-                                    tint = textColor,
-                                    modifier = Modifier.size(iconSize)
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = navItem.label,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = textColor
-                                )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = Color.Transparent,
-                                selectedIconColor = textColor,
-                                selectedTextColor = textColor,
-                                unselectedIconColor = textColor,
-                                unselectedTextColor = textColor
-                            )
-                        )
-                    }
-                }
+                DashboardBottomBar(
+                    navItems = navItemList,
+                    selectedIndex = selectedIndex,
+                    onItemSelected = { selectedIndex = it }
+                )
             }
         }
     ) { innerPadding ->
@@ -110,16 +93,66 @@ fun DashboardScreen(
 }
 
 @Composable
+fun DashboardBottomBar(
+    navItems: List<NavItem>,
+    selectedIndex: Int,
+    onItemSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    NavigationBar(
+        containerColor = Color(0xFFE97451),
+        tonalElevation = 8.dp,
+        modifier = modifier.shadow(8.dp, spotColor = Color.Gray)
+    ) {
+        navItems.forEachIndexed { index, navItem ->
+            val isSelected = selectedIndex == index
+            val textColor = if (isSelected) Color(0xFFD6CDBA) else Color(0xFFF0EAD6)
+            val iconSize = if (isSelected) 28.dp else 24.dp
+
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { onItemSelected(index) },
+                icon = {
+                    Icon(
+                        painter = painterResource(id = navItem.icon),
+                        contentDescription = navItem.label,
+                        tint = textColor,
+                        modifier = Modifier.size(iconSize)
+                    )
+                },
+                label = {
+                    Text(
+                        text = navItem.label,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = textColor
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    indicatorColor = Color.Transparent,
+                    selectedIconColor = textColor,
+                    selectedTextColor = textColor,
+                    unselectedIconColor = textColor,
+                    unselectedTextColor = textColor
+                )
+            )
+        }
+    }
+}
+
+@Composable
 fun ContentScreen(
     modifier: Modifier = Modifier,
     selectedIndex: Int,
     navController: NavHostController,
     authViewModel: AuthViewModel
 ) {
-    when (selectedIndex) {
-        0 -> Sales()
-        1 -> Inventory(navController)
-        2 -> Purchasing()
-        3 -> Account(authViewModel = authViewModel)
+    key(selectedIndex) {
+        when (selectedIndex) {
+            0 -> Sales()
+            1 -> Inventory()
+            2 -> Purchasing()
+            3 -> Account(authViewModel = authViewModel)
+        }
     }
 }
+

@@ -22,29 +22,31 @@ import com.example.inventoryapp.ui.inventoryscreen.EditProduct
 import com.example.inventoryapp.ui.inventoryscreen.Products
 
 @Composable
-fun Inventory(navController: NavHostController) {
-    val context = LocalContext.current
+fun Inventory() {
     val firestoreProductRepository = remember { FirestoreProductRepository() }
+    val navController = rememberNavController() // Create a new NavController here
 
-    NavHost(navController, startDestination = "home") {
+    NavHost(navController = navController, startDestination = "home") {
         composable("home") { InventoryScreen(navController) }
         composable("products") { Products(navController, firestoreProductRepository) }
         composable("add_products") { AddProducts(navController, firestoreProductRepository) }
         composable("edit_product/{productId}") { backStackEntry ->
-            val productId = backStackEntry.arguments?.getString("productId") ?: ""
+            val productId = backStackEntry.arguments?.getString("productId").orEmpty()
             EditProduct(navController, productId, firestoreProductRepository)
         }
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryScreen(navController: NavHostController) {
-    val items = listOf(
-        "PRODUCTS" to "products",
-        "ADD PRODUCTS" to "add_products"
-    )
+    // Memoize the items list
+    val items = remember {
+        listOf(
+            "PRODUCTS" to "products",
+            "ADD PRODUCTS" to "add_products"
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -66,20 +68,27 @@ fun InventoryScreen(navController: NavHostController) {
                 .padding(horizontal = 8.dp)
         ) {
             items(items) { (label, route) ->
-                InventoryListItem(label) { navController.navigate(route) }
+                InventoryListItem(
+                    text = label,
+                    onClick = { navController.navigate(route) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun InventoryListItem(text: String, onClick: () -> Unit) {
+fun InventoryListItem(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(120.dp)
             .padding(8.dp)
-            .clickable { onClick() },
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF0EAD6))
     ) {
@@ -92,6 +101,7 @@ fun InventoryListItem(text: String, onClick: () -> Unit) {
             Text(
                 text = text,
                 textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleMedium
             )
         }
     }
@@ -100,16 +110,22 @@ fun InventoryListItem(text: String, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryScreenContent(title: String) {
-    Scaffold(topBar = { TopAppBar(title = { Text(title) }) }) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-            Text(title, style = MaterialTheme.typography.headlineMedium)
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text(title) })
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium
+            )
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun InventoryScreenPreview() {
-    val navController = rememberNavController()
-    Inventory(navController)
-}
